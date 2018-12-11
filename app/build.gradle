@@ -1,7 +1,12 @@
 apply plugin: 'com.android.application'
+apply plugin: 'realm-android'
 
 android {
     compileSdkVersion 27
+    compileOptions {
+        sourceCompatibility 1.8
+        targetCompatibility 1.8
+    }
     defaultConfig {
         applicationId "ru.nicetoh8u.hotelbooking"
         minSdkVersion 23
@@ -28,5 +33,6 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     compile 'com.android.volley:volley:1.0.0'
+
     implementation 'com.squareup.picasso:picasso:2.71828'
 }

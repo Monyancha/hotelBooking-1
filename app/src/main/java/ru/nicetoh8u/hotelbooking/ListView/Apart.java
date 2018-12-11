@@ -1,7 +1,11 @@
-package ru.nicetoh8u.hotelbooking;
+package ru.nicetoh8u.hotelbooking.ListView;
 
-public class Apart {
+import io.realm.RealmObject;
+import io.realm.annotations.PrimaryKey;
 
+public class Apart extends RealmObject {
+
+    @PrimaryKey
     private Integer apartId;
 
     private String apart_name;
@@ -23,6 +27,10 @@ public class Apart {
 
 
     private String apart_image_url;
+
+    public Apart() {
+    }
+
 
 
     public Apart(Integer apartId, String apart_name, String apart_city, String apart_address, String apart_phone, String apart_x, String apart_y, Integer apart_cost, String apart_description, String apart_image_url) {
@@ -116,5 +124,18 @@ public class Apart {
 
     public void setApart_image_url(String apart_image_url) {
         this.apart_image_url = apart_image_url;
+    }
+
+    public void setApart(Apart a){
+        this.apartId = a.apartId;
+        this.apart_name = a.apart_name;
+        this.apart_city = a.apart_city;
+        this.apart_address = a.apart_address;
+        this.apart_phone = a.apart_phone;
+        this.apart_x = a.apart_x;
+        this.apart_y = a.apart_y;
+        this.apart_cost = a.apart_cost;
+        this.apart_description = a.apart_description;
+        this.apart_image_url = a.apart_image_url;
     }
 }

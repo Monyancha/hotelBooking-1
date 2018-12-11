@@ -1,7 +1,9 @@
-package ru.nicetoh8u.hotelbooking;
+package ru.nicetoh8u.hotelbooking.ListView;
 
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,11 +14,12 @@ import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.List;
 
-/**
- * Created by Belal on 9/5/2017.
- */
+import ru.nicetoh8u.hotelbooking.R;
 
 public class ListViewAdapter extends ArrayAdapter<Apart> {
 
@@ -54,9 +57,25 @@ public class ListViewAdapter extends ArrayAdapter<Apart> {
         //setting hero values to textviews
         textViewName.setText(apart.getApart_name());
         textViewCost.setText("Стоимость номера за сутки: " + apart.getApart_cost() + "Р");
-       Picasso.get().load(apart.getApart_image_url()).resize(250,250).into(imageView);
+        Picasso.get().load("file:"+mCtx.getDir("imageDir",
+                Context.MODE_PRIVATE).toString()+"/"+apart.getApartId()+".jpg")
+                .resize(250,250).into(imageView);
 
-        //returning the listitem
+
+       /* try {
+
+            File f=new File(mCtx.getDir("imageDir", Context.MODE_PRIVATE), apart.getApartId()+".jpg");
+            Bitmap b = BitmapFactory.decodeStream(new FileInputStream(f));
+
+            imageView.setImageBitmap(b);
+        }
+        catch (FileNotFoundException e)
+        {
+            e.printStackTrace();
+        }*/
+
+
+
         return listViewItem;
     }
 }

@@ -1,6 +1,10 @@
 package ru.nicetoh8u.hotelbooking;
 
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -17,36 +21,53 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import io.realm.Realm;
+import io.realm.RealmResults;
+import ru.nicetoh8u.hotelbooking.ListView.Apart;
+import ru.nicetoh8u.hotelbooking.ListView.ListViewAdapter;
+import ru.nicetoh8u.hotelbooking.ListView.OnSwipeTouchListener;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
 
-
     private static final String JSON_URL = "http://10.0.2.2:8080/aparts/";
 
     //listview object
-    ListView listView;
-
+    private ListView listView;
+    private Realm realm;
     //the hero list where we will store all the hero objects after parsing json
-    List<Apart> apartList;
+    private List<Apart> apartList;
+    private List<Apart> prevApartList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        //Realm init
+        Realm.init(this);
+
+
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -72,9 +93,30 @@ public class MainActivity extends AppCompatActivity
         //initializing listview and hero list
         listView = (ListView) findViewById(R.id.listView);
         apartList = new ArrayList<>();
+        prevApartList = new ArrayList<>();
 
         //this method will fetch and parse the data
         loadApartList();
+
+        listView.setOnTouchListener(new OnSwipeTouchListener(MainActivity.this) {
+            public void onSwipeTop() {
+                Toast.makeText(MainActivity.this, "top", Toast.LENGTH_SHORT).show();
+            }
+
+            public void onSwipeRight() {
+                Toast.makeText(MainActivity.this, "right", Toast.LENGTH_SHORT).show();
+            }
+
+            public void onSwipeLeft() {
+                Toast.makeText(MainActivity.this, "left", Toast.LENGTH_SHORT).show();
+            }
+
+            public void onSwipeBottom() {
+                loadApartList();
+                //Toast.makeText(MainActivity.this, "bottom", Toast.LENGTH_SHORT).show();
+            }
+
+        });
 
     }
 
@@ -140,8 +182,10 @@ public class MainActivity extends AppCompatActivity
 
     private void loadApartList() {
         //getting the progressbar
-        final  ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
-
+        final ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
+        realm = Realm.getDefaultInstance();
+        prevApartList = apartList;
+        apartList = new ArrayList<>();
         //making the progressbar visible
         progressBar.setVisibility(View.VISIBLE);
 
@@ -154,9 +198,9 @@ public class MainActivity extends AppCompatActivity
 
 
                         try {
-                            response = "{ \"aparts\":"+response+"}";
+                            response = "{ \"aparts\":" + response + "}";
                             //getting the whole json object from the response
-                            System.out.println("este - "+ response.toString());
+                            System.out.println("este - " + response.toString());
                             JSONObject obj = new JSONObject(response);
 
                             //we have the array named hero inside the object
@@ -169,7 +213,7 @@ public class MainActivity extends AppCompatActivity
                                 JSONObject apartObject = apartArray.getJSONObject(i);
 
                                 //creating a hero object and giving them the values from json object
-                                Apart apart = new Apart(Integer.parseInt(apartObject.getString("apartId")),
+                                apartList.add(new Apart(Integer.parseInt(apartObject.getString("apartId")),
                                         apartObject.getString("apart_name"),
                                         apartObject.getString("apart_city"),
                                         apartObject.getString("apart_address"),
@@ -178,12 +222,35 @@ public class MainActivity extends AppCompatActivity
                                         apartObject.getString("apart_y"),
                                         Integer.parseInt(apartObject.getString("apart_cost")),
                                         apartObject.getString("apart_description"),
-                                        apartObject.getString("apart_image_url"));
+                                        apartObject.getString("apart_image_url")));
 
-                                //adding the hero to herolist
-                                apartList.add(apart);
+
+//check to not download files every refresh
+                                if (!((i < prevApartList.size())
+                                        && (prevApartList.get(i).getApartId().equals(apartList.get(i).getApartId()))
+                                        && (prevApartList.get(i).getApart_image_url().equals(apartList.get(i).getApart_image_url()))
+                                        && (prevApartList.get(i).getApart_name().equals(apartList.get(i).getApart_name()))
+                                ))
+                                    getBitMap(apartObject.getString("apart_image_url"), Integer.parseInt(apartObject.getString("apartId")));
+
 
                             }
+
+                            realm.executeTransaction(new Realm.Transaction() {
+                                @Override
+                                public void execute(Realm realm) {
+                                    RealmResults<Apart> aparts = realm.where(Apart.class).findAll();
+                                    aparts.deleteAllFromRealm();
+                                }
+                            });
+
+                            realm.beginTransaction();
+
+                            for (Apart apart : apartList)
+                                realm.copyToRealm(apart);
+
+                            realm.commitTransaction();
+
 
                             //creating custom adapter object
                             ListViewAdapter adapter = new ListViewAdapter(apartList, getApplicationContext());
@@ -202,17 +269,101 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         //displaying the error in toast if occurrs
-                        Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
-                        System.out.println(error.getMessage());
+
+
+
+
+                        Toast.makeText(getApplicationContext(), "Нет соединения с сервером", Toast.LENGTH_SHORT).show();
+
+                        apartList = new ArrayList<>();
+
+                        RealmResults<Apart> aparts = realm.where(Apart.class).findAll();
+
+                       for (int i=0;i<aparts.size();i++)
+                           apartList.add(aparts.get(i));
+
+
+                        //creating custom adapter object
+                        ListViewAdapter adapter = new ListViewAdapter(apartList, getApplicationContext());
+
+                        //adding the adapter to listview
+                        listView.setAdapter(adapter);
+
+                        progressBar.setVisibility(View.INVISIBLE);
                     }
-                } );
+                });
+
+        //5000ms connection limit
+        stringRequest.setRetryPolicy(new DefaultRetryPolicy(500,
+                1,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
         //creating a request queue
         RequestQueue requestQueue = Volley.newRequestQueue(this);
 
         //adding the string request to request queue
-       requestQueue.add(stringRequest);
+        requestQueue.add(stringRequest);
+
+
     }
 
+    //getting Bitmap from url
+    public void getBitMap(String url, Integer id) {
+
+
+        Picasso.get().load(url).into(new Target() {
+            @Override
+            public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                saveToInternalStorage(bitmap, id);
+            }
+
+            @Override
+            public void onBitmapFailed(Exception e, Drawable errorDrawable) {
+
+            }
+
+
+            @Override
+            public void onPrepareLoad(Drawable placeHolderDrawable) {
+            }
+        });
+
+    }
+
+    //saving bitmap into  internal storage
+    private String saveToInternalStorage(Bitmap bitmapImage, Integer id) {
+        ContextWrapper cw = new ContextWrapper(getApplicationContext());
+        // path to /data/data/yourapp/app_data/imageDir
+        File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
+        // Create imageDir
+
+        File mypath = new File(directory, id + ".jpg");
+
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(mypath);
+            // Use the compress method on the BitMap object to write image to the OutputStream
+            bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            System.out.println("file loaded");
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return directory.getAbsolutePath();
+    }
+
+
+    public void onDestroy() {
+
+        super.onDestroy();
+
+        realm.close();
+
+    }
 
 }
