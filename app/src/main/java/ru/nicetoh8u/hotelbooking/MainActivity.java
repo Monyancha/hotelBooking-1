@@ -163,6 +163,9 @@ public class MainActivity extends AppCompatActivity
             Intent login = new Intent(this, Login.class);
             startActivity(login);
         } else if (id == R.id.nav_map) {
+            drawer.closeDrawer(GravityCompat.START);
+            Intent map = new Intent(this, MapHotels.class);
+            startActivity(map);
 
         } else if (id == R.id.nav_orders) {
 
@@ -344,7 +347,7 @@ public class MainActivity extends AppCompatActivity
             fos = new FileOutputStream(mypath);
             // Use the compress method on the BitMap object to write image to the OutputStream
             bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
-            System.out.println("file loaded");
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
